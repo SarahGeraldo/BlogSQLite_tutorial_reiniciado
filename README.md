@@ -1,7 +1,7 @@
 # Projeto Blog com SQLite, Nodejs, ExpressJS
 
 ### Sobre o projeto
-• É um site de inscrição e acesso com registro dos cadastrados.
+• É um blog com espaço para adição de informações, inscrição de novos usuários e acesso aos já cadastrados. O site possuí criptografia e memória de forma que os logados se encontrem na página de usuários (dashboard).
 
 ### Execução
 1 - Clonar o repositório <br>
