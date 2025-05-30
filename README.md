@@ -1,5 +1,8 @@
 # Projeto Blog com SQLite, Nodejs, ExpressJS
 
+### Sobre o projeto
+• É um site de inscrição e acesso com registro dos cadastrados.
+
 ### Execução
 1 - Clonar o repositório <br>
 • cd <local onde a o repositório será salvo> <br>
