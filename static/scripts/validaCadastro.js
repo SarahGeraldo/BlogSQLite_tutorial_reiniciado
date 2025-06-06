@@ -117,7 +117,7 @@ async function fetchDatas(event) { // tornar função em async (assincrona) para
     createDisplayMsgError( // correção aqui: mensagem apropriada
       "O e-mail digitado não é válido ou não é de um domínio permitido."
     );
-    email.focus();
+    email.focus(); 
     return;
   }
   

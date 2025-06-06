@@ -45,6 +45,9 @@ app.use(
 // Middleware para isto, que neste caso é o express.static, que gerencia rotas estáticas
 app.use("/static", express.static(__dirname + "/static"));
 
+// Middleware para processar requisições e envio de JSON
+app.use(express.json());
+
 // Middleware para processar as requisições do Body Parameters do cliente
 app.use(bodyParser.urlencoded({ extended: true }));
 
@@ -102,19 +105,79 @@ app.get("/cadastro", (req, res) => {
 
 // POST do cadastro
 app.post("/cadastro", (req, res) => {
-  console.log("POST /cadastro");
-  // Linha para depurar se esta vindo dados no req.body
-  !req.body
-    ? console.log(`Body vazio: ${req.body}`)
-    : console.log(JSON.stringify(req.body));
+  console.log("POST /cadastro - recebido");
+
+  // verifica se o corpo da requisição existe e tem dados
+  if (!req.body || Object.keys(req.body).length === 0) {
+    console.log("Corpo de requisição vazio.");
+    // é importante retornar aqui para não prosseguir    
+    return res.status(400).json({ success: false, message: "Nenhum dado recebido." });
+  }
+
+  console.log("Corpo de requisição:", JSON.stringify(req.body, null, 2));
 
   const { username, password, email, celular, cpf, rg } = req.body;
   // Colocar aqui as validações e inclusão no banco de dados do cadastro do usuário
   // 1. Validar dados do usuário
   // 2. saber se ele já existe no banco
-  const query =
-    // "SELECT * FROM users WHERE email=? OR cpf=? OR rg=? OR username=?";
-    "SELECT * FROM users WHERE username=?";
+
+  // --- VALIDAÇÃO BÁSICA NO SERVIDOR (MUITO IMPORTANTE) ---
+  // mesmo que o cliente valide, o servidor DEVE validar também
+  if (!username || !password || !email) {
+    return res.status(400).json({
+      success: false,
+      message: "Nome do usuário, senha e email são obrigatórios.",
+    });
+  }
+
+  // outras validações podem ser adicionadas aqui (formato do email, força da senha, etc.)
+  // exemplo simples de validação de email:
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({ success: false, message: "Formato de email inválido." })
+  };
+
+  const checkUserQuery = "SELECT * FROM users WHERE username = ? OR email = ?";
+  db.get(checkUserQuery, [username, email], (err, row) => {
+    if (err) {
+      console.error("Erro ao consultar o banco (verificar usuário):", err.message);
+      // não envie o erro detalhado do banco para o cliente por segurança
+      return res.status(500).json({
+        success: false,
+        message: "Erro interno do servidor ao verificar usuário."
+      });
+    }
+
+    console.log("Resultado da consulta de usuário existente:", row);
+
+    if (row) {
+      // usuário já existente
+      let conflictField = "";
+      if (row.username === username) {
+        conflictField = "Nome de usuário";
+      } else if (row.email === email) {
+        conflictField = "Email";
+      }
+
+      return res.status(409).json({
+        // 409 conflict
+        success: false,
+        message: `${conflictField} já cadastrado. escolha outro`,
+      });
+    } else {
+      // usuário não existente
+      const insertQuery = "INSERT INTO users (username, password,email, celular, cpf, rg) VALUES (?, ?, ?, ?, ?, ?)";
+
+      // lembre-se de usar a senha HASHED aqui no lugar de "password"
+    }
+  })
+
+  // Linha para depurar se esta vindo dados no req.body
+  !req.body
+    ? console.log(`Body vazio: ${req.body}`)
+    : console.log(JSON.stringify(req.body));
+
+
 
   // db.get(query, [email, cpf, rg, username], (err, row) => {
   db.get(query, [username], (err, row) => {
