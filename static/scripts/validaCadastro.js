@@ -101,49 +101,104 @@ function checkPasswordStrength(senha) {
 /* --------------------------------------------------------------------- */
 
 /* ------------- FUNÇÃO PARA VERIFICAR E ENVIAR DADOS ------------------ */
-function fetchDatas(event) {
+async function fetchDatas(event) { // tornar função em async (assincrona) para usar o await
   event.preventDefault();
+  createDisplayMsgError(""); // limpa mensagens de erro anteriores
 
-  if (!checkNome) {
+  if (!checkNome) { // correção aqui: chamar função
     createDisplayMsgError(
       "O nome não pode conter números ou caracteres especiais!"
     );
+    nome.focus();
     return;
   }
 
   if (!checkEmail(email.value)) {
-    createDisplayMsgError(
-      "O nome não pode conter números ou caracteres especiais!"
+    createDisplayMsgError( // correção aqui: mensagem apropriada
+      "O e-mail digitado não é válido ou não é de um domínio permitido."
     );
+    email.focus();
+    return;
+  }
+  
+  const senhaError = checkPasswordStrength(senha.value);
+  if (senhaError) {
+    createDisplayMsgError(senhaError);
+    senha.focus();
     return;
   }
 
   if (!checkPasswordMatch()) {
     createDisplayMsgError("As senhas digitadas não coincidem!");
+    confirmarSenha.focus();
     return;
   }
 
-  const senhaError = checkPasswordStrength(senha.value);
-  if (senhaError) {
-    createDisplayMsgError(senhaError);
-    return;
-  }
 
-  if (celular.value && /[A-Za-zÀ-ÿ]/.test(celular.value)) {
+  // validação do celular (opcional, já que a máscara tenta corrigir)
+  const celularLimpo = celular.value.replace(/\D/g, "");
+  if (celular.value && (celularLimpo.length < 10 || celularLimpo.length > 11)) {
     createDisplayMsgError("O telefone deve conter apenas números");
+    celular.focus();
     return;
   }
 
   const formData = {
-    nome: nome.value,
-    email: email.value,
-    senha: senha.value,
-    celular: celular.value,
-    cpf: cpf.value,
-    rg: rg.value,
+    // "username": representa o nome de usuário inserido pelo usuário.
+    /* ".trim()" é usado para remover quaisquer espaço em branco
+    do início ou do fim da string do nome do usuário.
+    */
+   username: nome.value.trim(),
+
+   email: email.value.trim(),
+
+   /* importante: a senha não deve ser "trimmed" (não deve conter ".trim()")
+   porque espaços no início ou no fim podem ser intencionais e parte da senha escolhida.
+  */
+   password: senha.value,
+
+   // é importante enviar apenas os números para facilitar o processamento no backend.
+   celular: celularLimpo,
+
+   /* "replace(/\D/g, "")" é usado para remover todos os caracteres que não são dígitos
+   garantindo que apenas os números do cpf sejam enviados.
+   */
+   cpf: cpf.value.replace(/\D/g, ""),
+
+   rg: rg.value.replace(/\D/g, ""),
   };
 
-  console.log("Formulário Enviado: ", JSON.stringify(formData, null, 2));
+  console.log("Dados a serem enviados: ", JSON.stringify(formData, null, 2));
+
+  // ------ INÍCIO DA LÓGICA DE ENVIO ------
+
+  try {
+    const response = await fetch('/cadastro', {
+      method: 'POST', // método HTTP
+      headers: {
+        'Content-Type': 'application/json', // indicando que estamos enviando JSON
+        // 'Accept': 'application/json' // opcional, indica que esperamos JSON de volta
+      },
+      body: JSON.stringify(formData), // converte o objeto JavaScript para uma string JSON
+    });
+
+    if (response.ok) { // verifica se a resposta do servidor foi bem-sucedida (status 2xx)
+      const result = await response.json(); // tenta parsear a resposta do servidor como JSON
+      console.log('Sucesso:', result);
+      formulario.reset(); // limpa o formulário após o sucesso
+      alert('Cadastro realizado com sucesso! ' + (result.message || ''));
+      window.location.href = "/login";
+      // redireciona ou mostra mensagem de sucesso mais elaborada
+    } else {
+      // o servidor respondeu com um erro (status 4xx ou 5xx)
+      const errorData = await response.json().catch(() => ({ message: 'Erro ao processar a resposta do servidor.' })); // tenta pegar a mensagem de erro do servidor
+    }
+  } catch (error) {
+    // erro de rede ou algo impediu a requisição de ser completada
+    console.error('erro de conexão. Tente novamente.');
+  }
+
+  // ------ FIM DA LÓGICA DE ENVIO ------
 }
 /* --------------------------------------------------------------------- */
 
